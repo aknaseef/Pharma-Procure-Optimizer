@@ -5,7 +5,7 @@ from setup_db import MasterProduct
 
 def simplify_product_name(raw_name):
     """
-    Simplifies detailed MOH product names to core components for better matching.
+    Simplifies detailed product names to core components for better matching.
     
     Examples:
     "0.2% CIPROFLOXACIN in 0.9% W/V SODIUM CHLORIDE INJECTION USP Infusion/Solution for, 100ml Plastic Bag"

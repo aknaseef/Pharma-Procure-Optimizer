@@ -7,7 +7,7 @@ Base = declarative_base()
 class MasterProduct(Base):
     __tablename__ = 'master_products'
     id = Column(Integer, primary_key=True)
-    moh_code = Column(String, unique=True, nullable=False)
+    item_code = Column(String, unique=True, nullable=False)
     product_name = Column(String, nullable=False)
     simplified_name = Column(String, index=True)  # New: Simplified for matching
     dosage = Column(String)

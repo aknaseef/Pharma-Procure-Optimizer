@@ -4,7 +4,7 @@ A local application for pharmacists to optimize inventory purchasing by comparin
 
 ## Features
 
-- **Master Product Management**: Upload MOH master list with intelligent column mapping
+- **Master Product Management**: Upload master list with intelligent column mapping
 - **Supplier Offer Processing**: Import supplier sheets with automatic fuzzy matching
 - **Smart Matching**: Hybrid fuzzy matching algorithm with price-based pack size disambiguation
 - **Best Buy Search**: Find lowest unit cost offers across all suppliers
@@ -51,7 +51,7 @@ python3 -m streamlit run app.py
 
 ### 1. Upload Master List
 - Go to "Upload & Process" tab
-- Upload your MOH Master List (Excel)
+- Upload your Master List (Excel)
 - Map columns (Product Name, Item Code, Cost, etc.)
 - Click "Process Master List"
 

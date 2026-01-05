@@ -85,7 +85,7 @@ with tab1:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("1. Master MOH List")
+        st.subheader("1. Master List")
         master_file = st.file_uploader("Upload Master List (Excel)", type=["xlsx"])
         if master_file:
             # Validate file size
@@ -104,13 +104,13 @@ with tab1:
                     
                     st.markdown("### Map Master List Columns")
                     idx_name = find_index(cols, ['product_name', 'product name', 'trade name', 'item name', 'description'])
-                    idx_code = find_index(cols, ['moh', 'code', 'item code']) 
+                    idx_code = find_index(cols, ['code', 'item code', 'item_code', 'sku']) 
                     idx_dosage = find_index(cols, ['dosage', 'strength', 'uom'])
                     idx_pack = find_index(cols, ['pack', 'size'])
                     idx_cost = find_index(cols, ['cost', 'standard', 'price', 'rate', 'retail'])
 
                     col_name = st.selectbox("Product Name", cols, index=idx_name, key='m_name')
-                    col_code = st.selectbox("Item Code (MOH)", cols, index=idx_code, key='m_code')
+                    col_code = st.selectbox("Item Code", cols, index=idx_code, key='m_code')
                     col_dosage = st.selectbox("Dosage", ["None"] + cols, index=idx_dosage + 1 if idx_dosage > 0 or (idx_dosage==0 and 'dosage' in cols[0]) else 0, key='m_dose')
                     col_pack = st.selectbox("Pack Size", ["None"] + cols, index=idx_pack + 1 if idx_pack > 0 or (idx_pack==0 and 'pack' in cols[0]) else 0, key='m_pack')
                     col_cost = st.selectbox("Standard Cost", ["None"] + cols, index=idx_cost + 1 if idx_cost > 0 or (idx_cost==0 and 'cost' in cols[0]) else 0, key='m_cost')
@@ -126,7 +126,7 @@ with tab1:
                         count = 0
                         for index, row in df_master.iterrows():
                             p_name = str(row[col_name])
-                            moh = str(row[col_code])
+                            item_code = str(row[col_code])
                             
                             # Robust Cost Cleaning
                             std_cost = 0.0
@@ -164,11 +164,11 @@ with tab1:
                             if len(p_name) < 2:
                                 continue
 
-                            exists = session.query(MasterProduct).filter_by(moh_code=moh).first()
+                            exists = session.query(MasterProduct).filter_by(item_code=item_code).first()
                             if not exists:
                                 simplified = simplify_product_name(p_name)
                                 mp = MasterProduct(
-                                    moh_code=moh,
+                                    item_code=item_code,
                                     product_name=p_name,
                                     simplified_name=simplified,
                                     dosage=dose_s,
@@ -555,7 +555,7 @@ with tab3:
             
             if unmatched:
                 with st.expander(f"⚠️ Unmatched Products ({len(unmatched)}) - Requires Manual Linking"):
-                    st.warning(f"These {len(unmatched)} products were not automatically matched to the MOH Master List. You must manually link them in the 'Matching Workbench' tab before they can be properly searched.")
+                    st.warning(f"These {len(unmatched)} products were not automatically matched to the Master List. You must manually link them in the 'Matching Workbench' tab before they can be properly searched.")
                     
                     unmatched_data = []
                     for u in unmatched:
@@ -581,7 +581,7 @@ with tab3:
         
         if unmatched:
             with st.expander(f"⚠️ Unmatched Products Matching '{query}' ({len(unmatched)})", expanded=True):
-                st.warning("These products match your search but are not linked to the MOH Master List. Link them in 'Matching Workbench' to compare prices.")
+                st.warning("These products match your search but are not linked to the Master List. Link them in 'Matching Workbench' to compare prices.")
                 
                 unmatched_data = []
                 for u in unmatched:
