@@ -1,0 +1,43 @@
+# Database
+pharma.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Data files (user-specific)
+MOH_Master.xlsx
+dummy_*.xlsx
+supplier_*.xlsx
+
+# Secrets
+.env
+*.pem
+*.key
