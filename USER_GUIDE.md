@@ -37,7 +37,7 @@ Welcome to **Pharma Procure Optimizer**, your intelligent solution for pharmaceu
 
 The **Dashboard** provides a comprehensive overview of your procurement data with real-time metrics and visualizations.
 
-![Dashboard Overview](/Users/naseef/.gemini/antigravity/brain/7774a7e2-5f68-480d-9c29-43c1355bde7f/dashboard_overview_1767803488095.png)
+![Dashboard Overview](docs/images/dashboard_overview.png)
 
 ### Key Metrics
 
@@ -61,7 +61,7 @@ The dashboard displays five essential metrics at the top:
 
 The **Upload & Process** tab allows you to import your master product list and supplier price sheets.
 
-![Upload Tab](/Users/naseef/.gemini/antigravity/brain/7774a7e2-5f68-480d-9c29-43c1355bde7f/upload_tab_interface_1767803536364.png)
+![Upload Tab](docs/images/upload_tab.png)
 
 ### Master Product List
 
@@ -104,7 +104,7 @@ The **Upload & Process** tab allows you to import your master product list and s
 
 The **Matching Workbench** is where you manually link supplier products that couldn't be automatically matched to your master list.
 
-![Matching Workbench](/Users/naseef/.gemini/antigravity/brain/7774a7e2-5f68-480d-9c29-43c1355bde7f/matching_workbench_tab_1767803639495.png)
+![Matching Workbench](docs/images/matching_workbench.png)
 
 ### How to Use the Matching Workbench
 
@@ -134,7 +134,7 @@ The **Matching Workbench** is where you manually link supplier products that cou
 
 The **Best Buy & Cart** tab is your main interface for searching products, comparing prices, and building your purchase order.
 
-![Best Buy & Cart](/Users/naseef/.gemini/antigravity/brain/7774a7e2-5f68-480d-9c29-43c1355bde7f/best_buy_cart_tab_1767803689140.png)
+![Best Buy & Cart](docs/images/best_buy_cart.png)
 
 ### Searching for Products
 
