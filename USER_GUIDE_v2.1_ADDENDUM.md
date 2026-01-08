@@ -26,7 +26,7 @@ Convert PDF supplier price lists directly within the application without needing
 8. **Download** the generated Excel file
 9. **Upload** the Excel file as a regular supplier list
 
-![PDF Converter Interface](file:///Users/naseef/.gemini/antigravity/brain/8fe31d5a-ab08-4a4c-ac5c-b6ca3f1ea81a/pdf_converter_interface_1767890025460.png)
+![PDF Converter Interface](docs/images/pdf_converter_interface.png)
 
 **Key Features**:
 - Automatic table extraction from multi-page documents
@@ -57,7 +57,7 @@ Track official regulated public selling prices separately from supplier net rate
 
 The system validates that suppliers aren't charging different public prices than what's registered in the master list, ensuring regulatory compliance.
 
-![Price Validation Workflow](file:///Users/naseef/.gemini/antigravity/brain/8fe31d5a-ab08-4a4c-ac5c-b6ca3f1ea81a/price_validation_flow_1767890075783.png)
+![Price Validation Workflow](docs/images/price_validation_flow.png)
 
 #### Column Mapping Updates
 
@@ -129,7 +129,7 @@ Added **50+ common terms** that are now ignored during matching:
 
 #### How Stopword Filtering Works
 
-![Stopword Filtering Process](file:///Users/naseef/.gemini/antigravity/brain/8fe31d5a-ab08-4a4c-ac5c-b6ca3f1ea81a/stopword_filtering_flow_1767890095565.png)
+![Stopword Filtering Process](docs/images/stopword_filtering_flow.png)
 
 **Example**:
 
