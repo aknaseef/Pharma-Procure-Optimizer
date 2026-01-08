@@ -34,8 +34,12 @@ logs/
 
 # Data files (user-specific)
 MOH_Master.xlsx
+Master_List.xlsx
+MOH_List.pdf
 dummy_*.xlsx
 supplier_*.xlsx
+*.xlsx
+*.pdf
 
 # Secrets
 .env
