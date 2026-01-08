@@ -1,17 +1,33 @@
 # 💊 Pharma-Procure Optimizer
 
-> **Version 2.0** - Now with Dashboard Analytics & Enhanced UI
+> **Version 2.1** - PDF Converter, Price Validation & Improved Matching
 
 A modern, intelligent application for pharmaceutical procurement that helps you optimize inventory purchasing by comparing supplier offers, analyzing pricing trends, and managing product matching with a beautiful, professional interface.
 
 ## ✨ Features
 
-### 📊 Dashboard Analytics (NEW in v2.0)
+### 🆕 NEW in v2.1
+- **📄 PDF to Excel Converter**: Convert PDF supplier price lists directly within the app
+  - Automatic table extraction from multi-page PDFs
+  - Smart column detection and mapping
+  - One-click download of converted Excel files
+  
+- **💵 Public Selling Price Validation**: Ensure regulatory compliance
+  - Track official public prices separately from net rates
+  - Automatic price validation during matching
+  - Price mismatch detection and filtering
+  
+- **🎯 Enhanced Product Matching**: Prevent false positives
+  - Stricter matching thresholds (85-90% similarity required)
+  - Pharmaceutical stopword filtering (50+ terms)
+  - No more matches based solely on "Tablet", "Syrup", etc.
+
+### 📊 Dashboard Analytics (v2.0)
 - **Real-time Metrics**: Track master products, active suppliers, price offers, and cart status
 - **Interactive Charts**: Visualize supplier pricing, expiry risk distribution, and cost trends
 - **Data Insights**: Make informed purchasing decisions with comprehensive analytics
 
-### 🎨 Modern UI/UX (NEW in v2.0)
+### 🎨 Modern UI/UX (v2.0)
 - **Professional Design**: Custom theme with teal accents and dark backgrounds
 - **Deal Cards**: Beautiful card-based product displays with hover effects
 - **Empty States**: Helpful guidance when no data is available
@@ -67,7 +83,7 @@ For detailed instructions with screenshots, see the **[User Guide](USER_GUIDE.md
 
 ## Usage
 
-### 1. View Dashboard (NEW)
+### 1. View Dashboard
 - Launch the app to see the Dashboard tab
 - Review key metrics: total products, suppliers, offers, and unmatched items
 - Analyze charts for supplier pricing trends and expiry risk distribution
@@ -76,16 +92,32 @@ For detailed instructions with screenshots, see the **[User Guide](USER_GUIDE.md
 ### 2. Upload Master List
 - Go to "Upload & Process" tab
 - Drag and drop your Master List Excel file (`.xlsx`, `.xls`)
-- Required columns: `Item Code`, `Product Name`, `Unit of Issue`
+- Required columns: `Item Code`, `Product Name`, `Standard Cost` (public selling price)
 - System automatically processes and stores the data
 
-### 3. Upload Supplier Offers
-- In the same "Upload & Process" tab, upload supplier CSV files
-- Required columns: `Supplier Name`, `Product Name`, `Price`, `Pack Size`
-- Optional: `Bonus`, `Expiry Date`, `List Tag`
-- System automatically matches products using fuzzy matching
+### 3. Convert PDF Supplier Lists (NEW)
+- In "Upload & Process" tab, scroll to "📄 Convert PDF Supplier List to Excel"
+- Upload PDF supplier price list
+- Review auto-detected columns
+- Map to required fields:
+  - Product Name (required)
+  - Public Selling Price (optional)
+  - Net Rate (required)
+  - Pack Size, Bonus, etc. (optional)
+- Download converted Excel file
+- Upload the Excel file as a regular supplier list
 
-### 4. Search Best Prices
+### 4. Upload Supplier Offers
+- In "Upload & Process" tab, upload supplier Excel/CSV files
+- Map columns:
+  - **Product Name** (required)
+  - **Public Selling Price** (PP AED) - regulated price
+  - **Net Rate** (Supplier Price) - what you pay
+  - Pack Size, Bonus, Expiry Date (optional)
+- System automatically matches products and validates prices
+- Review price mismatch warnings if any
+
+### 5. Search Best Prices
 - Go to "Best Buy & Cart" tab
 - Enter product name in the search bar
 - View results as beautiful deal cards showing:
@@ -95,43 +127,53 @@ For detailed instructions with screenshots, see the **[User Guide](USER_GUIDE.md
 - Set quantity and add items to cart
 - Review cart summary and total cost
 
-### 5. Manual Linking (When Needed)
+### 6. Review Price Compliance (NEW)
+- Navigate to "Matching Workbench" tab
+- Use "Price Mismatch" filter to see products with incorrect public prices
+- Review Net Rate, Public Price, and Master Price columns
+- Check Price ✓ column for validation status (✅/❌)
+
+### 7. Manual Linking (When Needed)
 - Navigate to "Matching Workbench" tab
 - Review unmatched supplier products
 - Click "🔗 Link" button next to items
 - Search and select corresponding master product
 - Linked items will now appear in Best Buy search
 
-## 🆕 What's New in v2.0
+## 🆕 What's New in v2.1
 
-- ✅ **Interactive Dashboard** with real-time metrics and charts (using Plotly)
-- ✅ **Modern UI Design** with custom CSS theme and professional styling
-- ✅ **Deal Cards** for better visual product comparison
-- ✅ **Empty States** with helpful icons and messages
-- ✅ **Toast Notifications** for user feedback
-- ✅ **Improved Cart Management** with detailed summaries
-- ✅ **Enhanced Search** with better result organization
+- ✅ **PDF to Excel Converter** - Convert supplier PDFs directly in the app
+- ✅ **Public Selling Price Validation** - Track and validate regulated prices
+- ✅ **Enhanced Matching Algorithm** - Stricter thresholds (85-90% similarity)
+- ✅ **Stopword Filtering** - Ignore 50+ pharmaceutical formulation terms
+- ✅ **Price Mismatch Detection** - Filter and review pricing compliance issues
+- ✅ **Improved Column Detection** - Smart suggestions for public vs net prices
+- ✅ **Database Migration System** - Seamless schema updates
 
 ## Project Structure
 
 ```
 purchase solution/
-├── app.py              # Main Streamlit application with UI
-├── setup_db.py         # Database models (SQLAlchemy)
-├── logic.py            # Business logic (EUC, fuzzy matching)
-├── simplify_names.py   # Product name simplification utilities
-├── config.py           # Configuration settings
-├── requirements.txt    # Python dependencies
-├── pharma.db           # SQLite database (auto-created)
-├── USER_GUIDE.md       # Comprehensive user guide with screenshots
-└── README.md           # This file
+├── app.py                    # Main Streamlit application with UI
+├── setup_db.py               # Database models (SQLAlchemy)
+├── logic.py                  # Business logic (EUC, fuzzy matching, stopwords)
+├── pdf_converter.py          # PDF to Excel conversion utilities (NEW)
+├── config.py                 # Configuration settings and stopwords list
+├── migrate_add_public_price.py  # Database migration script (NEW)
+├── requirements.txt          # Python dependencies
+├── pharma.db                 # SQLite database (auto-created)
+├── CHANGELOG.md              # Version history (NEW)
+├── USER_GUIDE.md             # Comprehensive user guide with screenshots
+└── README.md                 # This file
 ```
 
 ## Configuration
 
 Edit `config.py` to customize:
 - Risk assessment thresholds
-- Fuzzy matching cutoffs
+- Fuzzy matching cutoffs (Token Sort, Token Set, Partial Ratio)
+- Confidence levels for matching
+- Pharmaceutical stopwords list (formulation terms to ignore)
 - Default values
 
 ## 🤝 Contributing
@@ -147,7 +189,8 @@ MIT License - feel free to use this project for your pharmaceutical procurement 
 - Built with [Streamlit](https://streamlit.io/)
 - Fuzzy matching powered by [RapidFuzz](https://github.com/maxbachmann/RapidFuzz)
 - Charts created with [Plotly](https://plotly.com/)
+- PDF processing with [pdfplumber](https://github.com/jsvine/pdfplumber)
 
 ---
 
-**Version 2.0** | [View Changelog](USER_GUIDE.md) | [Report Issues](https://github.com/aknaseef/Pharma-Procure-Optimizer/issues)
+**Version 2.1** | [View Changelog](CHANGELOG.md) | [User Guide](USER_GUIDE.md) | [Report Issues](https://github.com/aknaseef/Pharma-Procure-Optimizer/issues)

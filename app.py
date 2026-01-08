@@ -285,6 +285,47 @@ footer {visibility: hidden;}
     color: #FFFFFF !important;
 }
 
+/* === Selectbox / Dropdown Styling Fix === */
+/* Main selectbox container */
+div[data-baseweb="select"] > div {
+    background-color: #1F2937 !important;
+    border-color: #374151 !important;
+}
+
+/* Selected value text */
+div[data-baseweb="select"] span, 
+div[data-baseweb="select"] div {
+    color: #FFFFFF !important;
+}
+
+/* Dropdown menu */
+div[data-baseweb="popover"] div[role="listbox"] {
+    background-color: #1F2937 !important;
+    border: 1px solid #374151 !important;
+}
+
+/* Dropdown options */
+div[data-baseweb="popover"] li {
+    background-color: #1F2937 !important;
+    color: #FFFFFF !important;
+}
+
+div[data-baseweb="popover"] li:hover {
+    background-color: #374151 !important;
+}
+
+/* === Text & Number Input Styling Fix === */
+.stTextInput input, .stNumberInput input, .stTextArea textarea {
+    background-color: #1F2937 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #374151 !important;
+}
+
+.stTextInput input:focus, .stNumberInput input:focus, .stTextArea textarea:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 1px var(--primary) !important;
+}
+
 /* === Tabs Styling === */
 .stTabs [data-baseweb="tab-list"] {
     gap: 8px;
@@ -875,7 +916,8 @@ with tab1:
             cols = df_supplier.columns.tolist()
             
             idx_item = find_index(cols, ['name', 'item', 'description', 'product', 'drug'])
-            idx_price = find_index(cols, ['price', 'rate', 'cost', 'public', 'net', 'aed'])
+            idx_public_price = find_index(cols, ['public', 'pp', 'p.p', 'mrp', 'retail', 'selling'])
+            idx_price = find_index(cols, ['price', 'rate', 'cost', 'net', 'offer', 'supplier'])
             idx_pack = find_index(cols, ['pack', 'size', 'uom', 'format'])
             idx_bonus = find_index(cols, ['bonus', 'offer', 'free', 'scheme', 'deal'])
             idx_expiry = find_index(cols, ['expiry', 'exp', 'valid', 'date'])
@@ -884,10 +926,11 @@ with tab1:
             m1, m2 = st.columns(2)
             with m1:
                 col_item = st.selectbox("📝 Item Name", cols, index=idx_item)
+                col_public_price = st.selectbox("💵 Public Selling Price (PP AED)", ["None"] + cols, index=idx_public_price + 1 if idx_public_price > 0 or (idx_public_price==0 and 'public' in cols[0].lower()) else 0)
                 col_pack = st.selectbox("📦 Pack Size", ["None"] + cols, index=idx_pack + 1 if idx_pack > 0 or (idx_pack==0 and 'pack' in cols[0].lower()) else 0)
                 col_expiry = st.selectbox("📅 Expiry Date", ["None"] + cols, index=idx_expiry + 1 if idx_expiry > 0 or (idx_expiry==0 and 'exp' in cols[0].lower()) else 0)
             with m2:
-                col_price = st.selectbox("💰 Price", cols, index=idx_price)
+                col_price = st.selectbox("💰 Net Rate (Supplier Price)", cols, index=idx_price)
                 col_bonus = st.selectbox("🎁 Bonus", ["None"] + cols, index=idx_bonus + 1 if idx_bonus > 0 or (idx_bonus==0 and 'bonus' in cols[0].lower()) else 0)
                 col_credit = st.selectbox("📆 Credit Terms", ["None"] + cols, index=idx_credit + 1 if idx_credit > 0 or (idx_credit==0 and 'credit' in cols[0].lower()) else 0)
             
@@ -915,11 +958,13 @@ with tab1:
                     archived_count += 1
                 
                 processed_count = 0
+                price_mismatch_count = 0
                 progress_bar = st.progress(0, text="Processing offers...")
                 
                 for index, row in df_supplier.iterrows():
                     raw_name = str(row[col_item])
                     
+                    # Extract net rate (what pharmacy pays)
                     try:
                         price_val = row[col_price]
                         if pd.isnull(price_val):
@@ -930,6 +975,18 @@ with tab1:
                     except ValueError:
                         match_price = re.search(r"(\d+(\.\d+)?)", str(row[col_price]))
                         price = float(match_price.group(1)) if match_price else 0.0
+                    
+                    # Extract public selling price
+                    public_price = None
+                    if col_public_price != "None":
+                        try:
+                            pub_val = row[col_public_price]
+                            if pd.notnull(pub_val):
+                                pub_str = str(pub_val).upper().replace('AED', '').replace('RS', '').replace('$', '').strip()
+                                public_price = float(pub_str)
+                        except (ValueError, KeyError):
+                            match_pub = re.search(r"(\d+(\.\d+)?)", str(row.get(col_public_price, "")))
+                            public_price = float(match_pub.group(1)) if match_pub else None
                     
                     pack_val = 1
                     if col_pack != "None":
@@ -953,8 +1010,13 @@ with tab1:
                         if match_c:
                             credit_days = int(match_c.group(1))
 
-                    match_result = fuzzy_match(raw_name, session, price)
+                    # Match with price validation
+                    match_result = fuzzy_match(raw_name, session, price, public_price)
                     matched_id = match_result['master_id'] if match_result else None
+                    
+                    # Track price mismatches
+                    if match_result and match_result.get('price_match') is False:
+                        price_mismatch_count += 1
                     
                     euc, _, norm_cost = calculate_euc(price, pack_val, bonus)
                     
@@ -963,6 +1025,7 @@ with tab1:
                         list_tag=list_tag,
                         raw_product_name=raw_name,
                         price=price,
+                        public_selling_price=public_price,
                         supplier_pack_size=pack_val,
                         normalized_cost=norm_cost,
                         bonus_string=bonus,
@@ -980,9 +1043,193 @@ with tab1:
                 session.close()
                 progress_bar.progress(1.0, text="Complete!")
                 st.toast(f"✅ Processed {processed_count} offers!", icon="🎉")
-                st.success(f"Archived **{archived_count}** old records. Processed **{processed_count}** new offers.")
+                
+                # Show summary with price mismatch warning if applicable
+                if price_mismatch_count > 0:
+                    st.warning(f"⚠️ **Price Validation**: {price_mismatch_count} of {processed_count} products have public price mismatches. Review them in the 'Matching Workbench' tab.")
+                    st.success(f"Archived **{archived_count}** old records. Processed **{processed_count}** new offers ({price_mismatch_count} with price warnings).")
+                else:
+                    st.success(f"Archived **{archived_count}** old records. Processed **{processed_count}** new offers. All prices validated ✅")
+                
                 time.sleep(1)
                 st.rerun()
+    
+    # ============================================
+    # PDF TO EXCEL CONVERTER
+    # ============================================
+    
+    st.markdown("---")
+    
+    with st.expander("📄 Convert PDF Supplier List to Excel", expanded=False):
+        st.markdown("""
+        <div style="padding: 1rem; background: #1F2937; border-radius: 8px; margin-bottom: 1rem;">
+            <p style="color: #9CA3AF; margin: 0;">Upload a PDF supplier price list and convert it to Excel format with the required columns.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Import PDF converter
+        from pdf_converter import extract_tables_from_pdf, merge_tables, convert_pdf_to_excel, get_column_suggestions
+        import tempfile
+        import os
+        
+        pdf_file = st.file_uploader("Upload PDF Supplier List", type=["pdf"], key="pdf_upload", label_visibility="collapsed")
+        
+        if pdf_file:
+            try:
+                # Extract tables
+                with st.spinner("Extracting tables from PDF..."):
+                    tables = extract_tables_from_pdf(pdf_file)
+                
+                if tables:
+                    # Merge all tables
+                    merged_df = merge_tables(tables)
+                    
+                    st.success(f"✅ Extracted {len(merged_df)} rows from {len(tables)} table(s)")
+                    
+                    # Preview
+                    with st.expander("👀 Preview Extracted Data", expanded=True):
+                        st.dataframe(merged_df.head(10), use_container_width=True)
+                        st.caption(f"Showing first 10 of {len(merged_df)} rows")
+                    
+                    # Column mapping
+                    st.markdown("### 🔗 Map Columns to Required Format")
+                    st.caption("Map the PDF columns to the required supplier list format. Required fields are marked with ✅.")
+                    
+                    # Get auto-suggestions
+                    suggestions = get_column_suggestions(merged_df)
+                    pdf_columns = ["None"] + merged_df.columns.tolist()
+                    
+                    # Find indices for suggestions
+                    def get_index(suggested_col):
+                        if suggested_col and suggested_col in merged_df.columns:
+                            return pdf_columns.index(suggested_col)
+                        return 0
+                    
+                    m1, m2 = st.columns(2)
+                    
+                    with m1:
+                        col_product = st.selectbox(
+                            "✅ Product Name (Required)",
+                            pdf_columns,
+                            index=get_index(suggestions['Product Name']),
+                            key='pdf_product'
+                        )
+                        
+                        col_public_price = st.selectbox(
+                            "💵 Public Selling Price (Optional)",
+                            pdf_columns,
+                            index=get_index(suggestions['Public Selling Price']),
+                            key='pdf_public_price'
+                        )
+                        
+                        col_pack = st.selectbox(
+                            "📦 Pack Size (Optional)",
+                            pdf_columns,
+                            index=get_index(suggestions['Pack Size']),
+                            key='pdf_pack'
+                        )
+                        
+                        col_expiry = st.selectbox(
+                            "📅 Expiry Date (Optional)",
+                            pdf_columns,
+                            index=get_index(suggestions['Expiry Date']),
+                            key='pdf_expiry'
+                        )
+                    
+                    with m2:
+                        col_price = st.selectbox(
+                            "✅ Net Rate (Required)",
+                            pdf_columns,
+                            index=get_index(suggestions['Net Rate']),
+                            key='pdf_price'
+                        )
+                        
+                        col_bonus = st.selectbox(
+                            "🎁 Bonus (Optional)",
+                            pdf_columns,
+                            index=get_index(suggestions['Bonus']),
+                            key='pdf_bonus'
+                        )
+                        
+                        col_credit = st.selectbox(
+                            "📆 Credit Terms (Optional)",
+                            pdf_columns,
+                            index=get_index(suggestions['Credit Terms']),
+                            key='pdf_credit'
+                        )
+                    
+                    # Validate required fields
+                    if col_product == "None" or col_price == "None":
+                        st.warning("⚠️ Please select at least Product Name and Price columns to proceed.")
+                    else:
+                        # Build column mapping
+                        column_mapping = {}
+                        if col_product != "None":
+                            column_mapping[col_product] = "Product Name"
+                        if col_price != "None":
+                            column_mapping[col_price] = "Price"
+                        if col_pack != "None":
+                            column_mapping[col_pack] = "Pack Size"
+                        if col_bonus != "None":
+                            column_mapping[col_bonus] = "Bonus"
+                        if col_expiry != "None":
+                            column_mapping[col_expiry] = "Expiry Date"
+                        if col_credit != "None":
+                            column_mapping[col_credit] = "Credit Terms"
+                        
+                        # Show mapping summary
+                        st.markdown("**Mapping Summary:**")
+                        for src, tgt in column_mapping.items():
+                            st.markdown(f"- `{src}` → `{tgt}`")
+                        
+                        if st.button("⚡ Convert to Excel", type="primary", use_container_width=True):
+                            # Create temporary file for output
+                            temp_dir = tempfile.gettempdir()
+                            output_filename = "converted_supplier_list.xlsx"
+                            output_path = os.path.join(temp_dir, output_filename)
+                            
+                            # Reset file pointer
+                            pdf_file.seek(0)
+                            
+                            # Convert
+                            success, message, row_count = convert_pdf_to_excel(
+                                pdf_file,
+                                column_mapping,
+                                output_path,
+                                merge_all=True
+                            )
+                            
+                            if success:
+                                st.success(f"✅ {message}")
+                                
+                                # Read the converted file for download
+                                with open(output_path, 'rb') as f:
+                                    excel_data = f.read()
+                                
+                                st.download_button(
+                                    label="📥 Download Excel File",
+                                    data=excel_data,
+                                    file_name=output_filename,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    use_container_width=True
+                                )
+                                
+                                st.info("💡 **Next Steps:** Upload this Excel file using the 'Supplier Price Sheet' section above.")
+                                
+                                # Clean up temp file
+                                try:
+                                    os.remove(output_path)
+                                except:
+                                    pass
+                            else:
+                                st.error(f"❌ Conversion failed: {message}")
+                
+                else:
+                    st.warning("⚠️ No tables found in the PDF. Please ensure the PDF contains tabular data.")
+                    
+            except Exception as e:
+                st.error(f"❌ Error processing PDF: {str(e)}")
+                logger.error(f"PDF conversion error: {e}")
 
 # ============================================
 # TAB 2: MATCHING WORKBENCH
@@ -1001,7 +1248,7 @@ with tab2:
             ["All Suppliers"] + [s.supplier_name for s in session.query(SupplierOffer.supplier_name).distinct().all()]
         )
     with filter_col2:
-        match_status = st.selectbox("Match Status", ["All", "Unmatched Only", "Matched Only"])
+        match_status = st.selectbox("Match Status", ["All", "Unmatched Only", "Matched Only", "Price Mismatch"])
     with filter_col3:
         st.write("")
         st.write("")
@@ -1018,17 +1265,35 @@ with tab2:
     
     offers = query.all()
     
+    # Filter for price mismatches if selected
+    if match_status == "Price Mismatch":
+        offers = [
+            o for o in offers 
+            if o.master_product and o.public_selling_price and o.master_product.standard_cost
+            and abs(o.public_selling_price - o.master_product.standard_cost) > 0.01
+        ]
+    
     data = []
     for o in offers:
         match_name = o.master_product.product_name if o.master_product else "❌ NO MATCH"
         match_status_icon = "✅" if o.master_product else "⚠️"
+        
+        # Price validation
+        price_match_icon = "—"
+        if o.master_product and o.public_selling_price and o.master_product.standard_cost:
+            price_diff = abs(o.public_selling_price - o.master_product.standard_cost)
+            price_match_icon = "✅" if price_diff <= 0.01 else "❌"
+        
         data.append({
             "ID": o.id,
             "Status": match_status_icon,
             "Supplier": o.supplier_name,
             "Product": o.raw_product_name,
             "Matched To": match_name,
-            "Unit Cost": f"{o.normalized_cost:.4f}" if o.normalized_cost else "-"
+            "Net Rate": f"{o.price:.2f}" if o.price else "-",
+            "Public Price": f"{o.public_selling_price:.2f}" if o.public_selling_price else "-",
+            "Master Price": f"{o.master_product.standard_cost:.2f}" if o.master_product and o.master_product.standard_cost else "-",
+            "Price ✓": price_match_icon
         })
     
     if data:

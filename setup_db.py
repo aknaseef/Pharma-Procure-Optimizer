@@ -20,7 +20,8 @@ class SupplierOffer(Base):
     supplier_name = Column(String, nullable=False)
     list_tag = Column(String, nullable=False, default="General") # New: For Partial Updates
     raw_product_name = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)  # Net rate (what pharmacy pays supplier)
+    public_selling_price = Column(Float)   # Official public price (must match master's standard_cost)
     supplier_pack_size = Column(Integer, default=1) # New: For Unit Normalization
     normalized_cost = Column(Float) # New: base unit cost
     bonus_string = Column(String)

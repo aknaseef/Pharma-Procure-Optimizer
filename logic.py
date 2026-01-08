@@ -6,7 +6,7 @@ from setup_db import ProductAlias, MasterProduct
 from config import (
     MATCH_CUTOFF_TOKEN_SORT, MATCH_CUTOFF_TOKEN_SET, MATCH_CUTOFF_PARTIAL,
     MATCH_SCORE_TOLERANCE, CONFIDENCE_HIGH_SCORE, CONFIDENCE_MEDIUM_SCORE,
-    DEFAULT_PACK_SIZE
+    DEFAULT_PACK_SIZE, PHARMA_STOPWORDS
 )
 
 def parse_pack_size(pack_input):
@@ -77,31 +77,69 @@ def calculate_euc(price: float, pack_size: int = 1, bonus_string: str = None):
     return round(euc, 4), round(margin, 2), round(normalized_cost, 4)
 
 
-def fuzzy_match(raw_name: str, db_session: Session, supplier_price: float = None):
+def remove_pharma_stopwords(product_name: str) -> str:
     """
-    Fuzzy match supplier product name to master product.
-    If supplier_price is provided, uses it to disambiguate between similar products.
+    Remove common pharmaceutical formulation terms from product name before matching.
+    This prevents false matches based solely on formulation type.
+    
+    Example: "Lantus Syrup" and "ACTIFED Syrup" shouldn't match just because both have "Syrup"
+    
+    Args:
+        product_name: Original product name
+        
+    Returns:
+        Cleaned product name with stopwords removed
+    """
+    # Convert to lowercase for stopword matching
+    name_lower = product_name.lower()
+    words = name_lower.split()
+    
+    # Remove stopwords
+    filtered_words = [w for w in words if w not in PHARMA_STOPWORDS]
+    
+    # Safety: If we removed everything, return original
+    # We need at least 1 meaningful word for matching
+    if len(filtered_words) < 1:
+        return product_name
+    
+    # Rejoin and return
+    return ' '.join(filtered_words)
+
+
+
+def fuzzy_match(raw_name: str, db_session: Session, supplier_price: float = None, supplier_public_price: float = None):
+    """
+    Fuzzy match supplier product name to master product with optional price validation.
     
     Args:
         raw_name: Supplier product name
         db_session: Database session
-        supplier_price: Optional supplier price to help disambiguate pack sizes
+        supplier_price: Optional net rate (what pharmacy pays supplier) to help disambiguate pack sizes
+        supplier_public_price: Optional public selling price to validate against master
     
     Returns:
-        Dict with match_name, master_id, score, confidence or None
+        Dict with match_name, master_id, score, confidence and price validation info or None
     """
     # First check for exact alias match
     alias = db_session.query(ProductAlias).filter(ProductAlias.alias_name == raw_name).first()
     if alias:
+        master_standard_cost = alias.master_product.standard_cost
+        price_match_info = _validate_price(supplier_public_price, master_standard_cost)
+        
         return {
             "match_name": alias.master_product.product_name,
             "master_id": alias.master_product.id,
             "score": 100,
-            "confidence": "High (Alias)"
+            "confidence": "High (Alias)",
+            **price_match_info
         }
 
     # Normalize to uppercase for better matching (case-insensitive)
     raw_name_normalized = raw_name.upper().strip()
+    
+    # Remove pharmaceutical stopwords to prevent matching on formulation type only
+    # This prevents "Lantus Syrup" from matching "ACTIFED Syrup" just because of "Syrup"
+    raw_name_cleaned = remove_pharma_stopwords(raw_name_normalized)
     
     # Use simplified_name for fuzzy matching, but also get standard_cost for price matching
     masters = db_session.query(
@@ -111,8 +149,13 @@ def fuzzy_match(raw_name: str, db_session: Session, supplier_price: float = None
         MasterProduct.standard_cost
     ).all()
     
-    # Build dict with simplified_name as the searchable text (uppercase)
-    master_dict = {m.id: (m.simplified_name or m.product_name).upper() for m in masters}
+    # Build dict with simplified_name as the searchable text (uppercase), cleaned of stopwords
+    master_dict = {}
+    for m in masters:
+        master_name = (m.simplified_name or m.product_name).upper()
+        cleaned_name = remove_pharma_stopwords(master_name)
+        master_dict[m.id] = cleaned_name
+    
     master_full_names = {m.id: m.product_name for m in masters}
     master_prices = {m.id: m.standard_cost for m in masters}
     
@@ -131,7 +174,7 @@ def fuzzy_match(raw_name: str, db_session: Session, supplier_price: float = None
     
     for scorer, cutoff in scorers:
         matches = process.extract(
-            raw_name_normalized,
+            raw_name_cleaned,  # Use cleaned name without stopwords
             master_dict,
             scorer=scorer,
             score_cutoff=cutoff,
@@ -185,12 +228,49 @@ def fuzzy_match(raw_name: str, db_session: Session, supplier_price: float = None
         confidence = "High"
     elif final_score >= CONFIDENCE_MEDIUM_SCORE:
         confidence = "Medium"
-        
+    
+    # Validate public selling price against master
+    master_standard_cost = master_prices[final_match]
+    price_match_info = _validate_price(supplier_public_price, master_standard_cost)
+    
     return {
         "match_name": master_full_names[final_match],
         "master_id": final_match,
         "score": round(final_score, 2),
-        "confidence": confidence
+        "confidence": confidence,
+        **price_match_info
+    }
+
+
+def _validate_price(supplier_public_price: float = None, master_standard_cost: float = None) -> dict:
+    """
+    Validate supplier public selling price against master product standard cost.
+    
+    Args:
+        supplier_public_price: Public price from supplier
+        master_standard_cost: Official public price from master list
+    
+    Returns:
+        Dict with price validation info
+    """
+    if supplier_public_price is None or master_standard_cost is None:
+        return {
+            "price_match": None,  # Unknown
+            "price_diff": None,
+            "master_public_price": master_standard_cost,
+            "supplier_public_price": supplier_public_price
+        }
+    
+    # Allow small tolerance for rounding errors (0.01 AED)
+    price_tolerance = 0.01
+    price_diff = abs(supplier_public_price - master_standard_cost)
+    price_match = price_diff <= price_tolerance
+    
+    return {
+        "price_match": price_match,
+        "price_diff": round(price_diff, 2),
+        "master_public_price": master_standard_cost,
+        "supplier_public_price": supplier_public_price
     }
 
 
